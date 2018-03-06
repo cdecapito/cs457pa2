@@ -46,7 +46,9 @@ const int ERROR_TBL_EXISTS = -3;
 const int ERROR_TBL_NOT_EXISTS = -4;
 const int ERROR_INCORRECT_COMMAND = -5;
 
-void startSimulation( string currentWorkingDirectory );
+void startSimulation( string testFilename, string currentWorkingDirectory );
+bool exitCheck( string str );
+bool stringValid( string str );
 bool removeSemiColon( string &input );
 bool startEvent( string input, vector< Database> &dbms, string currentWorkingDirectory, string &currentDatabase );
 string getNextWord( string &input );
@@ -55,6 +57,7 @@ void removeDatabase( vector< Database > &dbms, int index );
 void removeTable( vector< Database > &dbms, int dbReturn, int tblReturn );
 void handleError( int errorType, string commandError, string errorContainerName );
 void convertToLC( string &input );
+void convertToUC( string &input );
 
 
 /**
@@ -109,9 +112,16 @@ bool read_directory(const std::string& name, vector< string >& v)
  *
  * @note None
  */
-void startSimulation( string currentWorkingDirectory )
+void startSimulation( string testFilename, string currentWorkingDirectory )
 {
 	currentWorkingDirectory += "/DatabaseSystem";
+	ifstream fin( testFilename );
+	if( !fin.good() )
+	{
+		cout << "File '" << testFilename << "' does not exist." << endl;
+		//exit simulation
+		return;
+	}
 
 	// Check if the database system directory exists
 	struct stat buffer;
@@ -122,6 +132,7 @@ void startSimulation( string currentWorkingDirectory )
 	}
 
 	string input;
+	string temp;
 	string currentDatabase;
 	vector< Database > dbms;
 
@@ -170,21 +181,48 @@ void startSimulation( string currentWorkingDirectory )
 	bool simulationEnd = false;
 
 	do{
-		cout << "> ";
-		getline( cin, input );
-		//helper function to remove semi colon
-		if( removeSemiColon( input ) )
+		getline( fin, input );
+
+		//check that program is not to be ended
+		simulationEnd = exitCheck( input );
+		//check that the line is valid
+		if( !simulationEnd && stringValid( input )  && !removeSemiColon( input ) )
 		{
+			getline( fin, temp, ';' );
+			input = input + temp;
+		}
+		
+		//helper function to remove semi colon
+		//first checks that data is valid, if not valid will not check for semi colon
+		if(  !simulationEnd && stringValid( input ) ) 
+		{ 
 			//call helper function to check if modifying db or tbl
 			simulationEnd = startEvent( input, dbms, currentWorkingDirectory, currentDatabase );
 		}
-
 	}while( simulationEnd == false );
 
-	cout << "All done. " << endl; 
+	cout << "-- All done. " << endl; 
 }
 
+bool stringValid( string str )
+{
+	//check that it is not a comment or empty space
+	if( ( str[ 0 ] == '-' && str[ 1 ] == '-' ) || str == "" )
+	{
+		return false;
+	}
+	return true;
+}
 
+bool exitCheck( string str )
+{
+	convertToUC( str );
+	if( str == EXIT )
+	{
+		return true;
+	}
+	return false;
+}
 /**
  * @brief removeSemiColon
  *
@@ -226,17 +264,13 @@ bool removeSemiColon( string &input )
 	if( semiExists == false || semiIndex != ( strLen - 1 ) )
 	{
 		//if input is exit then we are fine
-		if( input == EXIT )
+		string temp = input;
+		convertToUC( temp );
+		if( temp == EXIT )
 		{
 			return true;
 		}
-		else
-		{
-			//otherwise incorrect syntax
-			handleError( ERROR_INCORRECT_COMMAND, "NULL", input );
-			return false;
-		}
-
+		return false;
 	}
 	else
 	{
@@ -244,7 +278,6 @@ bool removeSemiColon( string &input )
 		input.erase( input.find( ';' ) );
 		return true;
 	}
-	
 }
 
 
@@ -284,9 +317,10 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 	int errorType;
 	string originalInput = input;
 	string errorContainerName;
-	string actionType = getNextWord( input );
+	string temp = getNextWord( input );
+	convertToUC( temp );
+	string actionType = temp;
 	string containerType;
-
 	if( actionType.compare( SELECT )  == 0 )
 	{
 		Database dbTemp;
@@ -296,7 +330,6 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 		//get 
 		string temp = getNextWord( input );
 		temp = getNextWord( input );
-
 
 		Table tblTemp;
 		tblTemp.tableName = input;
@@ -337,7 +370,10 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 	else if( actionType.compare( CREATE ) == 0 ) 
 	{
 		//get string if we are modifying table or db
-		containerType = getNextWord( input );
+		temp = getNextWord( input );
+		convertToUC( temp );
+		containerType = temp;
+
 		//databse create
 		if( containerType == DATABASE_TYPE )
 		{
@@ -418,7 +454,10 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 	}
 	else if( actionType.compare( DROP ) == 0 )
 	{
-		containerType = getNextWord( input );
+		temp = getNextWord( input );
+		convertToUC( temp );
+		containerType = temp;
+
 		if( containerType == DATABASE_TYPE )
 		{
 			//create temp db to be dropped
@@ -672,6 +711,15 @@ void convertToLC( string &input )
 	for( int index = 0; index < size; index++ )
 	{
 		input[ index ] = tolower( input[ index ] );
+	}
+}
+
+void convertToUC( string &input )
+{
+	int size = input.size();
+	for( int index = 0; index < size; index++ )
+	{
+		input[ index ] = toupper( input[ index ] );
 	}
 }
 
