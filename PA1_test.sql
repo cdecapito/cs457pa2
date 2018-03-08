@@ -18,9 +18,7 @@ CREATE TABLE tbl_1 (a1 int, a2 varchar(20));
 SELECT * FROM tbl_1;
 ALTER TABLE tbl_1 ADD a3 float;
 SELECT * FROM tbl_1;
-CREATE TABLE tbl_2 (a3 float, 
-a2 int,
-a4 char(20));
+CREATE TABLE tbl_2 (a3 float, a2 int, a4 char(20));
 SELECT * FROM tbl_2;
 USE db_2;
 SELECT * FROM tbl_1;

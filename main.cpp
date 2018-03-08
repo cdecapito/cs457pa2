@@ -28,26 +28,14 @@
 
 using namespace std;
 
-int main( int argc, char * argv[ ] )
+int main()
 {
-	string testFilename;
-	if ( argc != 2 )
-	{
-		cout << "Incorrect number of arguments provided." << endl;
-		return 0;
-	}
-	else
-	{
-		//assume that testfile name is arg 2
-		testFilename = argv[ 1 ];
-	}
-
 	//get current working directory
 	char buffer[50];
 	getcwd( buffer, sizeof( buffer ) );
 	string currentWorkingDirectory( buffer );
 
-	startSimulation( testFilename, currentWorkingDirectory );
+	startSimulation( currentWorkingDirectory );
 
 	return 0;
 }

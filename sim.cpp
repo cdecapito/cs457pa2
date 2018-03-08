@@ -46,7 +46,7 @@ const int ERROR_TBL_EXISTS = -3;
 const int ERROR_TBL_NOT_EXISTS = -4;
 const int ERROR_INCORRECT_COMMAND = -5;
 
-void startSimulation( string testFilename, string currentWorkingDirectory );
+void startSimulation( string currentWorkingDirectory );
 bool exitCheck( string str );
 bool stringValid( string str );
 bool removeSemiColon( string &input );
@@ -112,16 +112,9 @@ bool read_directory(const std::string& name, vector< string >& v)
  *
  * @note None
  */
-void startSimulation( string testFilename, string currentWorkingDirectory )
+void startSimulation( string currentWorkingDirectory )
 {
 	currentWorkingDirectory += "/DatabaseSystem";
-	ifstream fin( testFilename );
-	if( !fin.good() )
-	{
-		cout << "File '" << testFilename << "' does not exist." << endl;
-		//exit simulation
-		return;
-	}
 
 	// Check if the database system directory exists
 	struct stat buffer;
@@ -181,14 +174,16 @@ void startSimulation( string testFilename, string currentWorkingDirectory )
 	bool simulationEnd = false;
 
 	do{
-		getline( fin, input );
+		getline( cin, input );
+		//cout << input << endl;
 
 		//check that program is not to be ended
 		simulationEnd = exitCheck( input );
 		//check that the line is valid
 		if( !simulationEnd && stringValid( input )  && !removeSemiColon( input ) )
 		{
-			getline( fin, temp, ';' );
+			getline( cin, temp, ';' );
+			//cout << input << endl;
 			input = input + temp;
 		}
 		
