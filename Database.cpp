@@ -24,13 +24,11 @@
 #include <dirent.h>
 #include "Database.h"
 
-
 using namespace std;
 
 // Precompiler directives /////////////////////////////////////////////////////
 #ifndef DATABASE_CPP
 #define DATABASE_CPP
-
 
 /**
  * @brief database Default constructor
@@ -109,7 +107,6 @@ void Database::databaseCreate()
 	system( ( "mkdir DatabaseSystem/" + databaseName ).c_str() );
 }
 
-
 /**
  * @brief databaseAlter
  *
@@ -123,7 +120,6 @@ void Database::databaseAlter( string input )
 {
 
 }
-
 
 /**
  * @brief databaseUse
@@ -146,7 +142,6 @@ void Database::databaseUse()
 	cout << "-- Using Database " << databaseName;
 	cout << "." << endl;
 }
-
 
 /**
  * @brief tableExists

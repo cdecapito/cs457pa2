@@ -38,6 +38,7 @@ const string CREATE = "CREATE";
 const string SELECT = "SELECT";
 const string USE = "USE";
 const string ALTER = "ALTER";
+const string INSERT = "INSERT";
 const string EXIT = ".EXIT";
 
 const int ERROR_DB_EXISTS = -1;
@@ -58,6 +59,7 @@ void removeTable( vector< Database > &dbms, int dbReturn, int tblReturn );
 void handleError( int errorType, string commandError, string errorContainerName );
 void convertToLC( string &input );
 void convertToUC( string &input );
+string getQueryType( string &input );
 
 
 /**
@@ -159,7 +161,7 @@ void startSimulation( string currentWorkingDirectory )
 						}
 						else
 						{
-							tempTable.tableName = tableItems[i];
+							tempTable.tableName = tableItems[j];
 
 							tempDatabase.databaseTable.push_back(tempTable);
 						}
@@ -312,22 +314,29 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 	int errorType;
 	string originalInput = input;
 	string errorContainerName;
+
+	//get first action word & convert to uppercase
 	string temp = getNextWord( input );
 	convertToUC( temp );
 	string actionType = temp;
+
+
 	string containerType;
+
 	if( actionType.compare( SELECT )  == 0 )
 	{
 		Database dbTemp;
 		dbTemp.databaseName = currentDatabase;
 		databaseExists( dbms, dbTemp, dbReturn );
 
-		//get 
-		string temp = getNextWord( input );
-		temp = getNextWord( input );
+		//get all words before from
+		string qType = getQueryType( input );
+
+		//get table name
+		string tName = getNextWord( input );
 
 		Table tblTemp;
-		tblTemp.tableName = input;
+		tblTemp.tableName = tName;
 
 		if( !(dbms[ dbReturn ].tableExists( tblTemp.tableName, tblReturn )) )
 		{
@@ -337,7 +346,7 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 		}
 		else
 		{
-			tblTemp.tableSelect( currentWorkingDirectory, currentDatabase );
+			tblTemp.tableSelect( currentWorkingDirectory, currentDatabase, input, qType );
 		}
 	}
 	else if( actionType.compare( USE ) == 0 )
@@ -537,11 +546,48 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 			else
 			{
 				//remove table/file
-				tblTemp.tableAlter( currentWorkingDirectory, currentDatabase, input, attrError );
+				tblTemp.tableAlter( currentWorkingDirectory, currentDatabase, input, attrError );	
 			}
-
-
 		}
+	}
+	else if( actionType.compare( INSERT ) == 0 )
+	{
+		temp = getNextWord( input );
+		//check that temp is into
+		if( temp != "into" )
+		{
+			errorExists = true;
+			errorType = ERROR_INCORRECT_COMMAND;
+			errorContainerName = originalInput;	
+		}
+
+		//check that current db exists
+		Database dbTemp;
+		dbTemp.databaseName = currentDatabase;
+		databaseExists( dbms, dbTemp, dbReturn );
+
+		//get table 
+		Table tblTemp;
+		tblTemp.tableName = getNextWord( input );
+
+
+		//check if table exists
+		if( !(dbms[ dbReturn ].tableExists( tblTemp.tableName, tblReturn )) )
+		{
+			//if it doesnt exist then return error
+			errorExists = true;
+			errorType = ERROR_TBL_NOT_EXISTS;
+			errorContainerName = tblTemp.tableName;
+		}
+		else if( !errorExists )
+		{
+			//table exists and we can modify it
+			//return only stuff between parentheses
+			input.erase( 0, input.find( "(" ) + 1 );
+			input.erase( input.find_last_of( ")" ), input.length()-1 );
+
+			tblTemp.tableInsert( currentWorkingDirectory, currentDatabase, tblTemp.tableName, input, attrError );
+		}	
 
 	}
 	else if( actionType.compare( EXIT ) == 0 )
@@ -717,4 +763,18 @@ void convertToUC( string &input )
 		input[ index ] = toupper( input[ index ] );
 	}
 }
+
+string getQueryType( string &input )
+{
+	string queryType;
+	//take first word of input and set as action word
+	queryType = input.substr( 0, input.find("from") - 1);
+	//erase word from original str to further parse
+	input.erase( 0, input.find("from") + 5 );
+
+	return queryType;	
+}
+
+
+
 

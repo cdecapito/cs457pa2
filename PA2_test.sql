@@ -27,7 +27,7 @@ select * from Product;
 
 --Delete data (20 points)
 delete from product 
-where name = "Gizmo";
+where name = 'Gizmo';
 
 delete from product 
 where price > 150;

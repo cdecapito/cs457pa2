@@ -26,6 +26,9 @@ using namespace std;
 #ifndef TABLE_CPP
 #define TABLE_CPP
 
+string ALL = "*";
+
+
 /**
  * @brief getCommaCount
  *
@@ -79,14 +82,61 @@ string getNextWord( string &input )
 {
 
 	string actionType;
-	//take first word of input and set as action word
-	actionType = input.substr( 0, input.find(" "));
-	//erase word from original str to further parse
-	input.erase( 0, input.find(" ") + 1 );
+	bool spaceExists = false;
+	int inputSize = input.size();
 
-	return actionType;	
+	for( int index = 0; index < inputSize; index++ )
+	{
+		if( input[ index ] == ' ' )
+		{
+			spaceExists = true;
+		}
+	}
+	if( !spaceExists )
+	{
+		actionType = input;
+		input.clear();
+		return actionType;
+	}
+	else
+	{
+		//take first word of input and set as action word
+		actionType = input.substr( 0, input.find(" "));
+		//erase word from original str to further parse
+		input.erase( 0, input.find(" ") + 1 );
+
+		return actionType;
+	}
+	
 }
 
+string getUntilTab( string &input )
+{
+	string attribute;
+	bool tabExists = false;
+	int inputSize = input.size();
+
+	for ( int index = 0; index < inputSize; index++ )
+	{
+		if( input[ index ] == '\t' )
+		{
+			tabExists = true;
+		}
+	}
+	if ( !tabExists )
+	{
+		attribute = input;
+		input.clear();
+		return attribute;
+	}
+	else
+	{
+		attribute = input.substr( 0, input.find("\t") );
+		input.erase( 0, input.find( "\t" ) + 1 );
+		return attribute;	
+	}
+
+}
 
 /**
  * @brief removeLeadingWS
@@ -108,7 +158,7 @@ string getNextWord( string &input )
 void removeLeadingWS( string &input )
 {
 	int index = 0;
-	while( input[ index ] == ' ' )
+	while( input[ index ] == ' ' || input[ index ] == '\t' )
 	{ 
 		index++;
 	}
@@ -248,7 +298,7 @@ void Table::tableCreate( string currentWorkingDirectory, string currentDatabase,
 
 		//output to file
 		fout << attr.attributeName << " ";
-		fout << attr.attributeType << endl;
+		fout << attr.attributeType << "\t";
 	}
 	
 	//remove leading WS from input
@@ -272,7 +322,7 @@ void Table::tableCreate( string currentWorkingDirectory, string currentDatabase,
 	
 	//output to file
 	fout << attr.attributeName << " ";
-	fout << attr.attributeType << endl;
+	fout << attr.attributeType;
 	fout.close();
 
 	cout << "-- Table " << tblName << " created." << endl;
@@ -330,9 +380,14 @@ void Table::tableDrop( string currentWorkingDirectory, string dbName )
 void Table::tableAlter( string currentWorkingDirectory, string currentDatabase, string input, bool &errorCode )
 {
 	vector < Attribute > tableAttributes;
+	vector < string > fileContents;
+	string attrLine;
 	Attribute attr;
+	Attribute tempAttr;
 	int commaCount = 0;
 	string temp;
+	int originalNumOfAttr = 0;
+	int newNumOfAttr = 0;
 	//create filepath  to read from file
 	string filePath = "/" + currentDatabase + "/" + tableName;
 	ifstream fin( ( currentWorkingDirectory + filePath ).c_str() );
@@ -343,16 +398,30 @@ void Table::tableAlter( string currentWorkingDirectory, string currentDatabase, 
 	{
 		while( !fin.eof() )
 		{
-			Attribute tempAttr;
-			fin >> tempAttr.attributeName;
-			fin >> tempAttr.attributeType;
-			if( !tempAttr.attributeType.empty() && !tempAttr.attributeName.empty() )
+			//get attribute line
+			getline( fin, attrLine );
+
+			while( !attrLine.empty() )
 			{
+				string attribute = getUntilTab( attrLine );
+				//parse attribute further
+				tempAttr.attributeName = getNextWord( attribute );
+				tempAttr.attributeType = attribute;
+
 				tableAttributes.push_back( tempAttr );
 			}
+			//check again that it is not end of file
+			if( !fin.eof() )
+			{
+				getline( fin, temp );
+				fileContents.push_back( temp );
+			}	
 		}
 
 		commaCount = getCommaCount( input );
+
+		//get number of attributes
+		originalNumOfAttr = tableAttributes.size();
 
 		ofstream fout( ( currentWorkingDirectory + filePath ).c_str() );
 		//get additional attributes
@@ -398,12 +467,33 @@ void Table::tableAlter( string currentWorkingDirectory, string currentDatabase, 
 		tableAttributes.push_back( attr );
 
 		int tableSize = tableAttributes.size();
+		newNumOfAttr = tableSize - originalNumOfAttr;
 		for( int index = 0; index < tableSize; index++ )
 		{
-			fout << tableAttributes[ index ].attributeName << " ";
-			fout << tableAttributes[ index ].attributeType << endl;
+			if( index != tableSize - 1 )
+			{
+				fout << tableAttributes[ index ].attributeName << " ";		
+				fout << tableAttributes[ index ].attributeType << "\t";	
+			}
+			else
+			{
+				fout << tableAttributes[ index ].attributeName << " ";		
+				fout << tableAttributes[ index ].attributeType;	
+			}
+
 		}
 
+		int contentSize = fileContents.size();
+		for( int index = 0; index < contentSize; index++ )
+		{
+			fout << endl << fileContents[ index ];
+			for( int newAttr = 0; newAttr < newNumOfAttr; newAttr++ )
+			{
+				fout << "\tnull";
+			}
+		}
+		fin.close();
+		fout.close();
 		cout << "-- Table " << tableName << " modified." << endl;
 	}
 	else
@@ -432,31 +522,91 @@ void Table::tableAlter( string currentWorkingDirectory, string currentDatabase, 
  *
  * @note None
  */
-void Table::tableSelect( string currentWorkingDirectory, string currentDatabase )
+void Table::tableSelect( string currentWorkingDirectory, string currentDatabase, string input, string queryType )
 {
 	vector< string > attributes;
+	vector < string > fileContent;
 	string filePath = "/" + currentDatabase + "/" + tableName;
 	string temp;
 	ifstream fin( ( currentWorkingDirectory + filePath ).c_str() );
-	while( !fin.eof() )
+
+	//check type of query
+	if( queryType == ALL )
 	{
+		//get until end of line
 		getline( fin, temp);
-		if( !temp.empty() )
+
+		while( !temp.empty() )
 		{
-			attributes.push_back( temp );
+			string attribute = getUntilTab( temp );
+			attributes.push_back( attribute );
+		}
+		
+		cout << "-- ";
+		int size = attributes.size();
+		for( int index = 0; index < size; index++ )
+		{
+			cout << attributes[ index ];
+			if( index != size - 1 )
+			{
+				cout << "|";
+			}
+		}
+		cout << endl;
+
+		while( !fin.eof() )
+		{
+			getline( fin, temp);
+			cout << "-- ";
+			while( !temp.empty() )
+			{
+				string content = getUntilTab( temp );
+				cout << content << "|";
+			}
+			cout << "\b \b";
+			cout << endl;
 		}
 	}
-	cout << "-- ";
-	int size = attributes.size();
-	for( int index = 0; index < size; index++ )
+	else
 	{
-		cout << attributes[ index ];
-		if( index != size - 1 )
-		{
-			cout << " | ";
-		}
+		cout << "not correct query type " << endl;
 	}
-	cout << endl;
+
+}
+
+void Table::tableInsert( string currentWorkingDirectory, string currentDatabase, string tblName, string input, bool &errorCode )
+{
+	string contentStr = "\n";
+	int commaCount;
+	string filePath = "/" + currentDatabase + "/" + tableName;
+	string temp;
+
+	commaCount = getCommaCount( input );
+	for( int index = 0; index < commaCount; index++ )
+	{
+		//remove beginning parameter
+		temp = input.substr( 0, input.find( "," ));
+		input.erase( 0, input.find(",") + 1 );
+
+		//remove leading white space
+		removeLeadingWS( temp );
+
+		//concat temp to content str
+		contentStr = contentStr + temp + '\t';
+
+	}
+	
+	//remove leading WS from input
+	removeLeadingWS( input );
+	contentStr = contentStr + input;
+
+	ofstream fout;
+	fout.open( ( currentWorkingDirectory + filePath ).c_str(), ofstream::out | ofstream::app );
+	fout << contentStr;
+
+	fout.close();
+
+	cout << "-- 1 new record inserted." << endl;
 }
 // Terminating precompiler directives  ////////////////////////////////////////
 #endif

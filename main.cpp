@@ -31,7 +31,7 @@ using namespace std;
 int main()
 {
 	//get current working directory
-	char buffer[50];
+	char buffer[200];
 	getcwd( buffer, sizeof( buffer ) );
 	string currentWorkingDirectory( buffer );
 

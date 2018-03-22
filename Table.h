@@ -23,6 +23,7 @@ struct Attribute{
 	string attributeType;
 };
 
+
 class Table{
 	public: 
 		string tableName;
@@ -32,7 +33,8 @@ class Table{
 		void tableCreate( string currentWorkingDirectory, string currentDatabase, string tblName, string input, bool &errorCode );
 		void tableDrop( string currentWorkingDirectory, string dbName );
 		void tableAlter( string currentWorkingDirectory, string currentDatabase, string input, bool &errorCode );
-		void tableSelect( string currentWorkingDirectory, string currentDatabase );
+		void tableSelect( string currentWorkingDirectory, string currentDatabase, string input, string queryType );
+		void tableInsert( string currentWorkingDirectory, string currentDatabase, string tblName, string input, bool &errorCode );
 };
 
 // Terminating precompiler directives  ////////////////////////////////////////

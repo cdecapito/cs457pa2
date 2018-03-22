@@ -21,3 +21,4 @@ The program should now be running. The user should now be prompted by a “>” 
 //////////////////////////////////////////////////////////////////////////////// Special Circumstances The program requires that all SQL commands and keywords must be in caps: eg. CREATE, DROP, USE, ALTER, SELECT * FROM, .EXIT, DATABASE, TABLE, ADD Likewise, each line should end with a semicolon except for when exiting the program. If the user wishes to terminate the program, .EXIT must be type and does not include a semicolon at the end. Spacing also matters. This program follows the spacing convention that is displayed in the provided SQL test file.
 # cs457pa2
 # cs457pa2
+# cs457
