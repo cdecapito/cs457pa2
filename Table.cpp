@@ -26,8 +26,16 @@ using namespace std;
 #ifndef TABLE_CPP
 #define TABLE_CPP
 
-string ALL = "*";
+const string ALL = "*";
 
+struct AttributeSubset{
+	string attributeName;
+	int attributeIndex;
+};
+
+int findAttrOccur( vector< Attribute > attributes, string attrName );
+void getWhereCondition( WhereCondition &wCond, string whereType, vector< Attribute > attributes );
+bool currIndexIsSubset( vector< AttributeSubset > attrSubsets, int indexVal );
 
 /**
  * @brief getCommaCount
@@ -55,7 +63,7 @@ int getCommaCount( string str )
 		//look for num of commas
 		if( str[ index ] == ',' )
 		{
-			count ++;
+			count++;
 		}
 	}
 	return count;
@@ -107,7 +115,6 @@ string getNextWord( string &input )
 
 		return actionType;
 	}
-	
 }
 
 string getUntilTab( string &input )
@@ -522,31 +529,38 @@ void Table::tableAlter( string currentWorkingDirectory, string currentDatabase, 
  *
  * @note None
  */
-void Table::tableSelect( string currentWorkingDirectory, string currentDatabase, string input, string queryType )
+void Table::tableSelect( string currentWorkingDirectory, string currentDatabase, string whereType, string queryType )
 {
-	vector< string > attributes;
-	vector < string > fileContent;
+	vector< Attribute > attributes;
+	vector< AttributeSubset > attrSubsets;
+	WhereCondition wCond;
 	string filePath = "/" + currentDatabase + "/" + tableName;
 	string temp;
+	int commaCount;
+	int contentLineCount = 0;
 	ifstream fin( ( currentWorkingDirectory + filePath ).c_str() );
 
-	//check type of query
-	if( queryType == ALL )
-	{
+	//get attributes
 		//get until end of line
-		getline( fin, temp);
+	//check type of query
+	getline( fin, temp);
 
-		while( !temp.empty() )
-		{
-			string attribute = getUntilTab( temp );
-			attributes.push_back( attribute );
-		}
-		
+	while( !temp.empty() )
+	{
+		Attribute tempAttribute;
+		tempAttribute.attributeName = getNextWord( temp );
+		tempAttribute.attributeType = getUntilTab( temp );
+		attributes.push_back( tempAttribute );
+	}
+
+	if( queryType == ALL && whereType == "" )
+	{
 		cout << "-- ";
 		int size = attributes.size();
 		for( int index = 0; index < size; index++ )
 		{
-			cout << attributes[ index ];
+			cout << attributes[ index ].attributeName << " ";
+			cout << attributes[ index ].attributeType;
 			if( index != size - 1 )
 			{
 				cout << "|";
@@ -561,15 +575,146 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 			while( !temp.empty() )
 			{
 				string content = getUntilTab( temp );
+				//check that if start of string is "'" and end is "'"
+				if( content[ 0 ] == '\'' && content[ content.size() - 1 ] == '\'' )
+				{
+					content.erase( 0, content.find( "'" ) + 1 );
+					content.erase( content.find_last_of( "'" ), content.length()-1 );
+				}
 				cout << content << "|";
 			}
 			cout << "\b \b";
 			cout << endl;
 		}
+		fin.close();
 	}
 	else
 	{
-		cout << "not correct query type " << endl;
+		//get attributes in query subset 
+		commaCount = getCommaCount( queryType );
+		
+		//get subset to query
+		for ( int index = 0; index < commaCount+1; index++ )
+		{
+			AttributeSubset tempAttr;
+
+			//remove beginning parameter
+			temp = queryType.substr( 0, queryType.find( "," ));
+			queryType.erase( 0, queryType.find(",") + 1 );
+
+			//remove leading white space
+			removeLeadingWS( temp );
+
+			tempAttr.attributeName = temp;
+			tempAttr.attributeIndex = findAttrOccur( attributes, tempAttr.attributeName );
+			attrSubsets.push_back( tempAttr );
+		}
+
+		if( !whereType.empty() )
+		{
+			getWhereCondition( wCond, whereType, attributes);
+		}
+
+		//get size of file content
+		while( !fin.eof() )
+		{
+			getline( fin, temp );
+			contentLineCount++;
+		}
+
+		fin.close();
+		ifstream fin( ( currentWorkingDirectory + filePath ).c_str() );
+		//get attribute and store into temp, not used
+		getline( fin, temp );
+		//create 2d array
+		string twoDArr[ contentLineCount ][ attributes.size() ];
+		int attributesSize = attributes.size();
+		for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
+		{
+			getline( fin, temp );
+			for( int jIndex = 0; jIndex < attributesSize; jIndex++ )
+			{
+				twoDArr[ iIndex ][ jIndex ] = getUntilTab( temp );
+			}
+		}
+
+		//output specific data
+		//for each row
+
+		for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
+		{
+			bool printResult = false;
+			cout << "-- ";
+			//for each col
+			for( int jIndex = 0; jIndex < attributesSize; jIndex++ )
+			{
+				//for each col check that the subset is to be called
+				if( currIndexIsSubset( attrSubsets, jIndex ) )
+				{
+					if( wCond.operatorValue == "==" )
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] == wCond.comparisonValue )
+						{	
+							printResult = true;
+						}
+					}
+					else if( wCond.operatorValue == "!=" )
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] != wCond.comparisonValue )
+						{	
+							printResult = true;
+						}
+					}
+					if( wCond.operatorValue == "<" )
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] < wCond.comparisonValue )
+						{	
+							printResult = true;
+						}
+					}
+					else if( wCond.operatorValue == "<=" )
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] <= wCond.comparisonValue )
+						{	
+							printResult = true;
+						}
+					}
+					else if( wCond.operatorValue == ">" )
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] > wCond.comparisonValue )
+						{	
+							printResult = true;
+						}
+					}
+					else if( wCond.operatorValue == ">=" )
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
+						{	
+							printResult = true;
+						}
+					}
+					if( printResult )
+					{
+						string content = twoDArr[ iIndex ][ jIndex ];
+						if( content[ 0 ] == '\'' && content[ content.size() - 1 ] == '\'' )
+						{
+							content.erase( 0, content.find( "'" ) + 1 );
+							content.erase( content.find_last_of( "'" ), content.length()-1 );
+						}
+						cout << content << "|";
+					}	
+				}
+			}
+			if( printResult )
+			{
+				cout << "\b \b";
+				cout << endl;
+			}
+			else
+			{
+				cout << "\b \b\b\b";	
+			}
+		}
 	}
 
 }
@@ -593,7 +738,6 @@ void Table::tableInsert( string currentWorkingDirectory, string currentDatabase,
 
 		//concat temp to content str
 		contentStr = contentStr + temp + '\t';
-
 	}
 	
 	//remove leading WS from input
@@ -608,5 +752,44 @@ void Table::tableInsert( string currentWorkingDirectory, string currentDatabase,
 
 	cout << "-- 1 new record inserted." << endl;
 }
+
+
+int findAttrOccur( vector< Attribute > attributes, string attrName )
+{
+	int attrSize = attributes.size();
+	int attrIndex;
+	for ( int index = 0; index < attrSize; index++ )
+	{
+		if( attributes[ index ].attributeName == attrName )
+		{
+			attrIndex = index;
+		}
+	}
+	return attrIndex;
+}
+
+void getWhereCondition( WhereCondition &wCond, string whereType, vector< Attribute > attributes )
+{
+	wCond.attributeName = getNextWord( whereType );
+	
+	wCond.attributeIndex = findAttrOccur( attributes, wCond.attributeName );
+
+	wCond.operatorValue = getNextWord( whereType );
+	wCond.comparisonValue = whereType;
+}
+
+bool currIndexIsSubset( vector< AttributeSubset > attrSubsets, int indexVal )
+{
+	int subsetSize = attrSubsets.size();
+	for( int index = 0; index < subsetSize; index++ )
+	{
+		if( attrSubsets[ index ].attributeIndex == indexVal )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 // Terminating precompiler directives  ////////////////////////////////////////
 #endif

@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <string>
+#include <string.h>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -39,6 +40,8 @@ const string SELECT = "SELECT";
 const string USE = "USE";
 const string ALTER = "ALTER";
 const string INSERT = "INSERT";
+const string UPDATE = "UPDATE";
+const string DELETE = "DELETE";
 const string EXIT = ".EXIT";
 
 const int ERROR_DB_EXISTS = -1;
@@ -60,6 +63,7 @@ void handleError( int errorType, string commandError, string errorContainerName 
 void convertToLC( string &input );
 void convertToUC( string &input );
 string getQueryType( string &input );
+string getWhereCondition( string &input );
 
 
 /**
@@ -278,8 +282,6 @@ bool removeSemiColon( string &input )
 }
 
 
-
-
 /**
  * @brief startEvent
  *
@@ -320,10 +322,9 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 	convertToUC( temp );
 	string actionType = temp;
 
-
 	string containerType;
 
-	if( actionType.compare( SELECT )  == 0 )
+	if( caseInsCompare( actionType, SELECT ) )
 	{
 		Database dbTemp;
 		dbTemp.databaseName = currentDatabase;
@@ -338,6 +339,8 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 		Table tblTemp;
 		tblTemp.tableName = tName;
 
+		string cType = getWhereCondition( input );
+
 		if( !(dbms[ dbReturn ].tableExists( tblTemp.tableName, tblReturn )) )
 		{
 			errorExists = true;
@@ -346,10 +349,10 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 		}
 		else
 		{
-			tblTemp.tableSelect( currentWorkingDirectory, currentDatabase, input, qType );
+			tblTemp.tableSelect( currentWorkingDirectory, currentDatabase, cType, qType );
 		}
 	}
-	else if( actionType.compare( USE ) == 0 )
+	else if( caseInsCompare( actionType, USE) )
 	{
 		
 		Database dbTemp;
@@ -371,7 +374,7 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 			errorType = ERROR_DB_NOT_EXISTS; 
 		}
 	}
-	else if( actionType.compare( CREATE ) == 0 ) 
+	else if( caseInsCompare( actionType, CREATE ) ) 
 	{
 		//get string if we are modifying table or db
 		temp = getNextWord( input );
@@ -520,7 +523,6 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 			errorType = ERROR_INCORRECT_COMMAND;
 			errorContainerName = originalInput;	
 		}
-
 	}
 	else if( actionType.compare( ALTER ) == 0 ) 
 	{
@@ -588,6 +590,13 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 
 			tblTemp.tableInsert( currentWorkingDirectory, currentDatabase, tblTemp.tableName, input, attrError );
 		}	
+	}
+	else if( actionType.compare( UPDATE ) == 0 )
+	{
+
+	}
+	else if( actionType.compare( DELETE ) == 0 )
+	{
 
 	}
 	else if( actionType.compare( EXIT ) == 0 )
@@ -608,8 +617,6 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 
 	return exitProgram;
 }
-
-
 
 
 
@@ -640,7 +647,7 @@ bool databaseExists( vector<Database> dbms, Database dbInput, int &dbReturn )
 	int size = dbms.size();
 	for( dbReturn = 0; dbReturn < size; dbReturn++ )
 	{
-		if( dbInput.databaseName == dbms[ dbReturn ].databaseName )
+		if( caseInsCompare( dbInput.databaseName, dbms[ dbReturn ].databaseName ) )
 		{
 			return true;
 		}
@@ -766,15 +773,72 @@ void convertToUC( string &input )
 
 string getQueryType( string &input )
 {
-	string queryType;
-	//take first word of input and set as action word
-	queryType = input.substr( 0, input.find("from") - 1);
-	//erase word from original str to further parse
-	input.erase( 0, input.find("from") + 5 );
+	bool fromOccurs = false;
+	int fromOccurance = 0;
+	int inputSize = input.size();
 
-	return queryType;	
+	for( int index = 0; index < inputSize; index++ )
+	{
+		//check that i is f or F
+		if( ( input[ index ] == 'f' || input[ index ] == 'F' ) &&
+			( input[ index + 1 ] == 'r' || input[ index + 1 ] == 'R' ) && 
+			( input[ index + 2 ] == 'o' || input[ index + 2 ] == 'O' ) &&
+			( input[ index + 3 ] == 'm' || input[ index + 3] == 'M' ))
+		{
+			fromOccurs = true;
+			fromOccurance = index;
+		}
+	}
+
+	if( fromOccurs )
+	{
+		string queryType;
+		//take first word of input and set as action word
+		queryType = input.substr( 0, fromOccurance - 1);
+		//erase word from original str to further parse
+		input.erase( 0, fromOccurance + 5 );
+
+		return queryType;
+	}
+	else
+	{
+		return "";
+	}
+	
 }
 
+string getWhereCondition( string &input )
+{
+	bool whereOccurs = false;
+	int whereOccurance = 0;
+	int inputSize = input.size();
 
+	for( int index = 0; index < inputSize; index++ )
+	{
+		//check that i is f or F
+		if( ( input[ index ] == 'w' || input[ index ] == 'W' ) &&
+			( input[ index + 1 ] == 'h' || input[ index + 1 ] == 'H' ) && 
+			( input[ index + 2 ] == 'e' || input[ index + 2 ] == 'E' ) &&
+			( input[ index + 3 ] == 'r' || input[ index + 3] == 'R' ) && 
+			( input[ index + 4 ] == 'e' || input[ index + 3] == 'E' ))
+		{
+			whereOccurs = true;
+			whereOccurance = index;
+		}
+	}
 
+	if( whereOccurs )
+	{
+		string condType;
+		//take first word of input and set as action word
+		condType = input.substr( whereOccurance + 6, input.size() - 1 );
+		//erase word from original str to further parse
+		input.erase( 0, whereOccurance + 6 );
+		return condType;
+	}
+	else
+	{
+		return "";
+	}
 
+}

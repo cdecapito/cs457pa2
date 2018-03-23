@@ -30,6 +30,21 @@ using namespace std;
 #ifndef DATABASE_CPP
 #define DATABASE_CPP
 
+
+bool caseInsCompare( string s1, string s2 );
+
+
+inline bool caseInsCharCompareN( char a, char b )
+{
+	return( toupper( a ) == toupper( b ) );
+}
+
+bool caseInsCompare( string s1, string s2 )
+{
+	return ( ( s1.size() == s2.size() ) && 
+			equal( s1.begin(), s1.end(), s2.begin(), caseInsCharCompareN ) );
+}
+
 /**
  * @brief database Default constructor
  *
@@ -166,14 +181,15 @@ void Database::databaseUse()
  *
  * @note None
  */
-bool Database::tableExists( string tblName, int &tblReturn )
+bool Database::tableExists( string &tblName, int &tblReturn )
 {
 	int tblSize = databaseTable.size();
 	for( int index = 0; index < tblSize; index++ )
 	{
-		if( databaseTable[ index ].tableName == tblName )
+		if( caseInsCompare( databaseTable[ index ].tableName, tblName ) )
 		{
 			tblReturn = index;
+			tblName = databaseTable[ index ].tableName;
 			return true;
 		}
 	}
