@@ -23,10 +23,20 @@ struct Attribute{
 	string attributeType;
 };
 
+struct SetCondition
+{
+	string attributeName;
+	int attributeIndex;
+	string operatorValue;
+	string newValue;
+};
+
 struct WhereCondition{
 	string attributeName;
 	int attributeIndex;
 	string operatorValue;
+	bool floatValue;
+	double comparisonValueFloat;
 	string comparisonValue;
 };
 
@@ -42,8 +52,8 @@ class Table{
 		void tableAlter( string currentWorkingDirectory, string currentDatabase, string input, bool &errorCode );
 		void tableSelect( string currentWorkingDirectory, string currentDatabase, string whereType, string queryType );
 		void tableInsert( string currentWorkingDirectory, string currentDatabase, string tblName, string input, bool &errorCode );
-		void tableUpdate( );
-		void tableDelete( );
+		void tableUpdate( string currentWorkingDirectory, string currentDatabase, string whereType, string setType );
+		void tableDelete( string currentWorkingDirectory, string currentDatabase, string whereType);
 };
 
 // Terminating precompiler directives  ////////////////////////////////////////

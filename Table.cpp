@@ -35,8 +35,9 @@ struct AttributeSubset{
 
 int findAttrOccur( vector< Attribute > attributes, string attrName );
 void getWhereCondition( WhereCondition &wCond, string whereType, vector< Attribute > attributes );
+void getSetCondition( SetCondition &sCond, string setType, vector< Attribute > attributes );
 bool currIndexIsSubset( vector< AttributeSubset > attrSubsets, int indexVal );
-
+bool indexExists( int i, vector< int > indexCounter );
 /**
  * @brief getCommaCount
  *
@@ -171,6 +172,13 @@ void removeLeadingWS( string &input )
 	}
 
 	input.erase( 0, index );
+
+	index = input.size() - 1;
+	while( input[ index ] == ' ' || input[ index ] == '\t' )
+	{
+		index--;
+	}
+	input.erase( index + 1, input.size() - 1 );
 }
 
 
@@ -425,6 +433,7 @@ void Table::tableAlter( string currentWorkingDirectory, string currentDatabase, 
 			}	
 		}
 
+		//get comma count to get num of attributes
 		commaCount = getCommaCount( input );
 
 		//get number of attributes
@@ -479,6 +488,7 @@ void Table::tableAlter( string currentWorkingDirectory, string currentDatabase, 
 		{
 			if( index != tableSize - 1 )
 			{
+				//if its the last table then do not add tab
 				fout << tableAttributes[ index ].attributeName << " ";		
 				fout << tableAttributes[ index ].attributeType << "\t";	
 			}
@@ -490,6 +500,7 @@ void Table::tableAlter( string currentWorkingDirectory, string currentDatabase, 
 
 		}
 
+		//initalize all records so that attribtue is null
 		int contentSize = fileContents.size();
 		for( int index = 0; index < contentSize; index++ )
 		{
@@ -538,6 +549,7 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 	string temp;
 	int commaCount;
 	int contentLineCount = 0;
+	double tempDouble;
 	ifstream fin( ( currentWorkingDirectory + filePath ).c_str() );
 
 	//get attributes
@@ -545,6 +557,7 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 	//check type of query
 	getline( fin, temp);
 
+	//automatically get all the attributes
 	while( !temp.empty() )
 	{
 		Attribute tempAttribute;
@@ -553,10 +566,13 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 		attributes.push_back( tempAttribute );
 	}
 
-	if( queryType == ALL && whereType == "" )
+	//if query all attributes
+	if( queryType == ALL )
 	{
 		cout << "-- ";
 		int size = attributes.size();
+
+		//output all attributes
 		for( int index = 0; index < size; index++ )
 		{
 			cout << attributes[ index ].attributeName << " ";
@@ -568,25 +584,197 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 		}
 		cout << endl;
 
-		while( !fin.eof() )
+		//if there is a where condition then output with where cond
+		if( !whereType.empty() )
 		{
-			getline( fin, temp);
-			cout << "-- ";
-			while( !temp.empty() )
+			getWhereCondition( wCond, whereType, attributes);
+		
+					//get size of file content
+			while( !fin.eof() )
 			{
-				string content = getUntilTab( temp );
-				//check that if start of string is "'" and end is "'"
-				if( content[ 0 ] == '\'' && content[ content.size() - 1 ] == '\'' )
-				{
-					content.erase( 0, content.find( "'" ) + 1 );
-					content.erase( content.find_last_of( "'" ), content.length()-1 );
-				}
-				cout << content << "|";
+				getline( fin, temp );
+				contentLineCount++;
 			}
-			cout << "\b \b";
-			cout << endl;
+			fin.close();
+			ifstream fin( ( currentWorkingDirectory + filePath ).c_str() );
+			//get attribute and store into temp, not used
+			getline( fin, temp );
+			//create 2d array
+			string twoDArr[ contentLineCount ][ attributes.size() ];
+			int attributesSize = attributes.size();
+			for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
+			{
+				getline( fin, temp );
+				for( int jIndex = 0; jIndex < attributesSize; jIndex++ )
+				{
+					twoDArr[ iIndex ][ jIndex ] = getUntilTab( temp );
+				}
+			}
+
+			//output specific data
+			//for each row
+			for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
+			{
+				bool printResult = false;
+				cout << "-- ";
+				//for each col
+				for( int jIndex = 0; jIndex < attributesSize; jIndex++ )
+				{
+						if( wCond.operatorValue == "=" )
+						{
+							
+							//if we are not comparing floats, then do not convert to double
+							if( !wCond.floatValue ) 
+							{
+								if( twoDArr[ iIndex ][ wCond.attributeIndex ] == wCond.comparisonValue )
+								{
+									printResult = true;
+								}
+							}
+							else if( wCond.floatValue )
+							{
+								tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+								if( tempDouble == wCond.comparisonValueFloat )
+								{
+									printResult = true;
+								}
+							}
+						}
+						else if( wCond.operatorValue == "!=" )
+						{
+							if( !wCond.floatValue ) 
+							{
+								if( twoDArr[ iIndex ][ wCond.attributeIndex ] != wCond.comparisonValue )
+								{
+									printResult = true;
+								}
+							}
+							else if( wCond.floatValue )
+							{
+								tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+								if( tempDouble != wCond.comparisonValueFloat )
+								{
+									printResult = true;
+								}
+							}
+						}
+						if( wCond.operatorValue == "<" )
+						{
+							if( !wCond.floatValue ) 
+							{
+								if( twoDArr[ iIndex ][ wCond.attributeIndex ] < wCond.comparisonValue )
+								{
+									printResult = true;
+								}
+							}
+							else if( wCond.floatValue )
+							{
+								tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+								if( tempDouble < wCond.comparisonValueFloat )
+								{
+									printResult = true;
+								}
+							}
+						}
+						else if( wCond.operatorValue == "<=" )
+						{
+							if( !wCond.floatValue ) 
+							{
+								if( twoDArr[ iIndex ][ wCond.attributeIndex ] <= wCond.comparisonValue )
+								{
+									printResult = true;
+								}
+							}
+							else if( wCond.floatValue )
+							{
+								tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+								if( tempDouble <= wCond.comparisonValueFloat )
+								{
+									printResult = true;
+								}
+							}
+						}
+						else if( wCond.operatorValue == ">" )
+						{
+							if( !wCond.floatValue ) 
+							{
+								if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
+								{
+									printResult = true;
+								}
+							}
+							else if( wCond.floatValue )
+							{
+								tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+								if( tempDouble > wCond.comparisonValueFloat )
+								{
+									printResult = true;
+								}
+							}
+						}
+						else if( wCond.operatorValue == ">=" )
+						{
+							if( !wCond.floatValue ) 
+							{
+								if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
+								{
+									printResult = true;
+								}
+							}
+							else if( wCond.floatValue )
+							{
+								tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+								if( tempDouble >= wCond.comparisonValueFloat )
+								{
+									printResult = true;
+								}
+							}
+						}
+						if( printResult )
+						{
+							string content = twoDArr[ iIndex ][ jIndex ];
+							if( content[ 0 ] == '\'' && content[ content.size() - 1 ] == '\'' )
+							{
+								content.erase( 0, content.find( "'" ) + 1 );
+								content.erase( content.find_last_of( "'" ), content.length()-1 );
+							}
+							cout << content << "|";
+						}	
+				}
+				if( printResult )
+				{
+					cout << "\b \b";
+					cout << endl;
+				}
+				else
+				{
+					cout << "\b \b\b\b";	
+				}
+			}
+
 		}
-		fin.close();
+		else //output everything otherwise
+		{
+			while( !fin.eof() )
+			{
+				getline( fin, temp);
+				cout << "-- ";
+				while( !temp.empty() )
+				{
+					string content = getUntilTab( temp );
+					//check that if start of string is "'" and end is "'"
+					if( content[ 0 ] == '\'' && content[ content.size() - 1 ] == '\'' )
+					{
+						content.erase( 0, content.find( "'" ) + 1 );
+						content.erase( content.find_last_of( "'" ), content.length()-1 );
+					}
+					cout << content << "|";
+				}
+				cout << "\b \b";
+				cout << endl;
+			}
+			fin.close();
+		}
 	}
 	else
 	{
@@ -610,6 +798,7 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 			attrSubsets.push_back( tempAttr );
 		}
 
+		//check that there is where condition
 		if( !whereType.empty() )
 		{
 			getWhereCondition( wCond, whereType, attributes);
@@ -628,6 +817,8 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 		getline( fin, temp );
 		//create 2d array
 		string twoDArr[ contentLineCount ][ attributes.size() ];
+		
+		//store data in 2d array
 		int attributesSize = attributes.size();
 		for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
 		{
@@ -638,9 +829,20 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 			}
 		}
 
+		//output attribute subset
+		cout << "-- ";
+		for( int index = 0; index < attributesSize; index++ )
+		{
+			if( currIndexIsSubset( attrSubsets, index ) )
+			{
+				cout << attributes[ index ].attributeName;
+				cout << " " << attributes[ index ].attributeType << "|"; 
+			}
+		}
+		cout << "\b \b" << endl;
+
 		//output specific data
 		//for each row
-
 		for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
 		{
 			bool printResult = false;
@@ -651,46 +853,114 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 				//for each col check that the subset is to be called
 				if( currIndexIsSubset( attrSubsets, jIndex ) )
 				{
-					if( wCond.operatorValue == "==" )
+					if( wCond.operatorValue == "=" )
 					{
-						if( twoDArr[ iIndex ][ wCond.attributeIndex ] == wCond.comparisonValue )
-						{	
-							printResult = true;
+						
+						//if we are not comparing floats, then do not convert to double
+						if( !wCond.floatValue ) 
+						{
+							if( twoDArr[ iIndex ][ wCond.attributeIndex ] == wCond.comparisonValue )
+							{
+								printResult = true;
+							}
+						}
+						else if( wCond.floatValue )
+						{
+							tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+							if( tempDouble == wCond.comparisonValueFloat )
+							{
+								printResult = true;
+							}
 						}
 					}
 					else if( wCond.operatorValue == "!=" )
 					{
-						if( twoDArr[ iIndex ][ wCond.attributeIndex ] != wCond.comparisonValue )
-						{	
-							printResult = true;
+						if( !wCond.floatValue ) 
+						{
+							if( twoDArr[ iIndex ][ wCond.attributeIndex ] != wCond.comparisonValue )
+							{
+								printResult = true;
+							}
+						}
+						else if( wCond.floatValue )
+						{
+							tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+							if( tempDouble != wCond.comparisonValueFloat )
+							{
+								printResult = true;
+							}
 						}
 					}
 					if( wCond.operatorValue == "<" )
 					{
-						if( twoDArr[ iIndex ][ wCond.attributeIndex ] < wCond.comparisonValue )
-						{	
-							printResult = true;
+						if( !wCond.floatValue ) 
+						{
+							if( twoDArr[ iIndex ][ wCond.attributeIndex ] < wCond.comparisonValue )
+							{
+								printResult = true;
+							}
+						}
+						else if( wCond.floatValue )
+						{
+							tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+							if( tempDouble < wCond.comparisonValueFloat )
+							{
+								printResult = true;
+							}
 						}
 					}
 					else if( wCond.operatorValue == "<=" )
 					{
-						if( twoDArr[ iIndex ][ wCond.attributeIndex ] <= wCond.comparisonValue )
-						{	
-							printResult = true;
+						if( !wCond.floatValue ) 
+						{
+							if( twoDArr[ iIndex ][ wCond.attributeIndex ] <= wCond.comparisonValue )
+							{
+								printResult = true;
+							}
+						}
+						else if( wCond.floatValue )
+						{
+							tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+							if( tempDouble <= wCond.comparisonValueFloat )
+							{
+								printResult = true;
+							}
 						}
 					}
 					else if( wCond.operatorValue == ">" )
 					{
-						if( twoDArr[ iIndex ][ wCond.attributeIndex ] > wCond.comparisonValue )
-						{	
-							printResult = true;
+						if( !wCond.floatValue ) 
+						{
+							if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
+							{
+								printResult = true;
+							}
+						}
+						else if( wCond.floatValue )
+						{
+							tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+							if( tempDouble > wCond.comparisonValueFloat )
+							{
+								printResult = true;
+							}
 						}
 					}
 					else if( wCond.operatorValue == ">=" )
 					{
-						if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
-						{	
-							printResult = true;
+						if( !wCond.floatValue ) 
+						{
+							if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
+							{
+								printResult = true;
+							}
+						}
+						else if( wCond.floatValue )
+						{
+							tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+							if( tempDouble >= wCond.comparisonValueFloat )
+							{
+								printResult = true;
+							}
 						}
 					}
 					if( printResult )
@@ -704,6 +974,8 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 						cout << content << "|";
 					}	
 				}
+
+				
 			}
 			if( printResult )
 			{
@@ -716,7 +988,6 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 			}
 		}
 	}
-
 }
 
 void Table::tableInsert( string currentWorkingDirectory, string currentDatabase, string tblName, string input, bool &errorCode )
@@ -753,6 +1024,429 @@ void Table::tableInsert( string currentWorkingDirectory, string currentDatabase,
 	cout << "-- 1 new record inserted." << endl;
 }
 
+void Table::tableUpdate( string currentWorkingDirectory, string currentDatabase, string whereType, string setType )
+{
+	vector< Attribute > attributes;
+	SetCondition sCond;
+	WhereCondition wCond;
+	string filePath = "/" + currentDatabase + "/" + tableName;
+	string temp;
+	int recordsModified = 0;
+	int contentLineCount = 0;
+	double tempDouble;
+	ifstream fin( ( currentWorkingDirectory + filePath ).c_str() );
+
+	//get attributes
+		//get until end of line
+	//check type of query
+	getline( fin, temp);
+
+	//get attribute data
+	while( !temp.empty() )
+	{
+		Attribute tempAttribute;
+		tempAttribute.attributeName = getNextWord( temp );
+		tempAttribute.attributeType = getUntilTab( temp );
+		attributes.push_back( tempAttribute );
+	}
+
+	//get where and set conditions
+	getWhereCondition( wCond, whereType, attributes);
+	getSetCondition( sCond, setType, attributes );
+
+	//get size of file content
+	while( !fin.eof() )
+	{
+		getline( fin, temp );
+		contentLineCount++;
+	}
+
+	fin.close();
+	
+	fin.open(( currentWorkingDirectory + filePath ).c_str() );
+	
+	//get attribute and store into temp 
+	getline( fin, temp );
+	string attributeData = temp;
+	
+	//create 2d array and store content data
+	string twoDArr[ contentLineCount ][ attributes.size() ];
+	int attributesSize = attributes.size();
+	for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
+	{
+		getline( fin, temp );
+		for( int jIndex = 0; jIndex < attributesSize; jIndex++ )
+		{
+			twoDArr[ iIndex ][ jIndex ] = getUntilTab( temp );
+		}
+	}
+	fin.close();
+
+	ofstream fout( ( currentWorkingDirectory + filePath ).c_str() );
+	
+	fout << attributeData << endl;
+	
+	//output specific data
+	//for each row
+	for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
+	{
+		bool printResult = false;
+		//for each col
+		for( int jIndex = 0; jIndex < attributesSize; jIndex++ )
+		{
+			//for each col check that the set index is to be called
+			if( sCond.attributeIndex == jIndex )
+			{
+				if( wCond.operatorValue == "=" )
+				{
+					//if we are not comparing floats, then do not convert to double
+					if( !wCond.floatValue ) 
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] == wCond.comparisonValue )
+						{
+							printResult = true;
+						}
+					}
+					else if( wCond.floatValue )
+					{
+						tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+						if( tempDouble == wCond.comparisonValueFloat )
+						{
+							printResult = true;
+						}
+					}
+				}
+				else if( wCond.operatorValue == "!=" )
+				{
+					if( !wCond.floatValue ) 
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] != wCond.comparisonValue )
+						{
+							printResult = true;
+						}
+					}
+					else if( wCond.floatValue )
+					{
+						tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+						if( tempDouble != wCond.comparisonValueFloat )
+						{
+							printResult = true;
+						}
+					}
+				}
+				if( wCond.operatorValue == "<" )
+				{
+					if( !wCond.floatValue ) 
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] < wCond.comparisonValue )
+						{
+							printResult = true;
+						}
+					}
+					else if( wCond.floatValue )
+					{
+						tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+						if( tempDouble < wCond.comparisonValueFloat )
+						{
+							printResult = true;
+						}
+					}
+				}
+				else if( wCond.operatorValue == "<=" )
+				{
+					if( !wCond.floatValue ) 
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] <= wCond.comparisonValue )
+						{
+							printResult = true;
+						}
+					}
+					else if( wCond.floatValue )
+					{
+						tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+						if( tempDouble <= wCond.comparisonValueFloat )
+						{
+							printResult = true;
+						}
+					}
+				}
+				else if( wCond.operatorValue == ">" )
+				{
+					if( !wCond.floatValue ) 
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
+						{
+							printResult = true;
+						}
+					}
+					else if( wCond.floatValue )
+					{
+						tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+						if( tempDouble > wCond.comparisonValueFloat )
+						{
+							printResult = true;
+						}
+					}
+				}
+				else if( wCond.operatorValue == ">=" )
+				{
+					if( !wCond.floatValue ) 
+					{
+						if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
+						{
+							printResult = true;
+						}
+					}
+					else if( wCond.floatValue )
+					{
+						tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+						if( tempDouble >= wCond.comparisonValueFloat )
+						{
+							printResult = true;
+						}
+					}
+				}
+				if( printResult )
+				{
+					recordsModified++;
+					twoDArr[ iIndex ][ jIndex ] = sCond.newValue;
+				}	
+			}
+			fout << twoDArr[ iIndex ][ jIndex ];
+			if( jIndex != attributesSize - 1 )
+			{
+				fout << "\t";
+			}
+		}
+		if( iIndex != contentLineCount- 1 )
+		{
+			fout << endl;
+		}
+	}
+	cout << "-- " << recordsModified; 
+	if( recordsModified == 1 )
+	{
+		cout  << " record modified." << endl;
+	}
+	else
+	{
+		cout << " records modified." << endl;
+	}
+}
+
+
+void Table::tableDelete( string currentWorkingDirectory, string currentDatabase, string whereType )
+{
+	vector< Attribute > attributes;
+	vector< string > contentOutput;
+	SetCondition sCond;
+	WhereCondition wCond;
+	string filePath = "/" + currentDatabase + "/" + tableName;
+	string temp;
+	vector< int > recordsModified;
+	int contentLineCount = 0;
+	double tempDouble;
+	ifstream fin( ( currentWorkingDirectory + filePath ).c_str() );
+
+	//get attributes
+		//get until end of line
+	//check type of query
+	getline( fin, temp);
+
+	//get attribute data
+	while( !temp.empty() )
+	{
+		Attribute tempAttribute;
+		tempAttribute.attributeName = getNextWord( temp );
+		tempAttribute.attributeType = getUntilTab( temp );
+		attributes.push_back( tempAttribute );
+	}
+
+	getWhereCondition( wCond, whereType, attributes);
+
+	//get size of file content
+	while( !fin.eof() )
+	{
+		getline( fin, temp );
+		contentLineCount++;
+	}
+
+	fin.close();
+	//ifstream fin( ( currentWorkingDirectory + filePath ).c_str() );
+	fin.open(( currentWorkingDirectory + filePath ).c_str() );
+	//get attribute and store into temp 
+	getline( fin, temp );
+	string attributeData = temp;
+	//create 2d array
+	string twoDArr[ contentLineCount ][ attributes.size() ];
+	int attributesSize = attributes.size();
+	for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
+	{
+		getline( fin, temp );
+		for( int jIndex = 0; jIndex < attributesSize; jIndex++ )
+		{
+			twoDArr[ iIndex ][ jIndex ] = getUntilTab( temp );
+		}
+	}
+	fin.close();
+
+	ofstream fout( ( currentWorkingDirectory + filePath ).c_str() );
+	
+	fout << attributeData << endl;
+	//output specific data
+	//for each row
+	for( int iIndex = 0; iIndex < contentLineCount; iIndex++ )
+	{
+		bool printResult = true;
+		//check that index val does 
+		if( wCond.operatorValue == "=" )
+		{
+			
+			//if we are not comparing floats, then do not convert to double
+			if( !wCond.floatValue ) 
+			{
+				if( twoDArr[ iIndex ][ wCond.attributeIndex ] == wCond.comparisonValue )
+				{
+					printResult = false;
+				}
+			}
+			else if( wCond.floatValue )
+			{
+				tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+				if( tempDouble == wCond.comparisonValueFloat )
+				{
+					printResult = false;
+				}
+			}
+		}
+		else if( wCond.operatorValue == "!=" )
+		{
+			if( !wCond.floatValue ) 
+			{
+				if( twoDArr[ iIndex ][ wCond.attributeIndex ] != wCond.comparisonValue )
+				{
+					printResult = false;
+				}
+			}
+			else if( wCond.floatValue )
+			{
+				tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+				if( tempDouble != wCond.comparisonValueFloat )
+				{
+					printResult = false;
+				}
+			}
+		}
+		if( wCond.operatorValue == "<" )
+		{
+			if( !wCond.floatValue ) 
+			{
+				if( twoDArr[ iIndex ][ wCond.attributeIndex ] < wCond.comparisonValue )
+				{
+					printResult = false;
+				}
+			}
+			else if( wCond.floatValue )
+			{
+				tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+				if( tempDouble < wCond.comparisonValueFloat )
+				{
+					printResult = false;
+				}
+			}
+		}
+		else if( wCond.operatorValue == "<=" )
+		{
+			if( !wCond.floatValue ) 
+			{
+				if( twoDArr[ iIndex ][ wCond.attributeIndex ] <= wCond.comparisonValue )
+				{
+					printResult = false;
+				}
+			}
+			else if( wCond.floatValue )
+			{
+				tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+				if( tempDouble <= wCond.comparisonValueFloat )
+				{
+					printResult = false;
+				}
+			}
+		}
+		else if( wCond.operatorValue == ">" )
+		{
+			if( !wCond.floatValue ) 
+			{
+				if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
+				{
+					printResult = false;
+				}
+			}
+			else if( wCond.floatValue )
+			{
+				tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+				if( tempDouble > wCond.comparisonValueFloat )
+				{
+					printResult = false;
+				}
+			}
+		}
+		else if( wCond.operatorValue == ">=" )
+		{
+			if( !wCond.floatValue ) 
+			{
+				if( twoDArr[ iIndex ][ wCond.attributeIndex ] >= wCond.comparisonValue )
+				{
+					printResult = false;
+				}
+			}
+			else if( wCond.floatValue )
+			{
+				tempDouble = atof( twoDArr[ iIndex ][ wCond.attributeIndex ].c_str() );
+				if( tempDouble >= wCond.comparisonValueFloat )
+				{
+					printResult = false;
+				}
+			}
+		}
+
+		if( printResult == true )
+		{
+			string content = "";
+			for( int jIndex = 0; jIndex < attributesSize; jIndex++ )
+			{
+				content = content + twoDArr[ iIndex ][ jIndex ];
+				if( jIndex != attributesSize - 1 )
+				{
+					content = content + '\t';
+				}
+			}
+			contentOutput.push_back( content );
+		}
+	}
+
+	int newContentSize = contentOutput.size();
+
+	for( int index = 0; index < newContentSize; index++ )
+	{
+		fout << contentOutput[ index ];
+		if( index != newContentSize - 1 )
+		{
+			fout << endl;
+		}
+	}
+
+	int recordsDeleted = contentLineCount - newContentSize;
+	cout << "-- " << recordsDeleted;
+	if( recordsDeleted == 1 )
+	{
+		cout << " record deleted." << endl;
+	}
+	else
+	{
+		cout << " records deleted." << endl;
+	}
+}
 
 int findAttrOccur( vector< Attribute > attributes, string attrName )
 {
@@ -768,14 +1462,43 @@ int findAttrOccur( vector< Attribute > attributes, string attrName )
 	return attrIndex;
 }
 
+bool isAttrFloat( vector< Attribute > attributes, string attrName )
+{
+	int attrSize = attributes.size();
+	for ( int index = 0; index < attrSize; index++ )
+	{
+		if( attributes[ index ].attributeName == attrName )
+		{
+			if( attributes[ index ].attributeType == "float" || attributes[ index ].attributeType == "FLOAT" )
+			{
+				return true;
+			}
+		}
+	}
+	return false;	
+}
+
 void getWhereCondition( WhereCondition &wCond, string whereType, vector< Attribute > attributes )
 {
 	wCond.attributeName = getNextWord( whereType );
-	
 	wCond.attributeIndex = findAttrOccur( attributes, wCond.attributeName );
-
 	wCond.operatorValue = getNextWord( whereType );
 	wCond.comparisonValue = whereType;
+
+	if( isAttrFloat( attributes, wCond.attributeName ) )
+	{
+		wCond.floatValue = true;
+		wCond.comparisonValueFloat = atof( wCond.comparisonValue.c_str() );
+	}
+}
+
+void getSetCondition( SetCondition &sCond, string setType, vector< Attribute > attributes )
+{
+	removeLeadingWS( setType );
+	sCond.attributeName = getNextWord( setType );
+	sCond.attributeIndex = findAttrOccur( attributes, sCond.attributeName );
+	sCond.operatorValue = getNextWord( setType );
+	sCond.newValue = setType;
 }
 
 bool currIndexIsSubset( vector< AttributeSubset > attrSubsets, int indexVal )
@@ -790,6 +1513,22 @@ bool currIndexIsSubset( vector< AttributeSubset > attrSubsets, int indexVal )
 	}
 	return false;
 }
+
+bool indexExists( int i, vector< int > indexCounter )
+{
+	int size = indexCounter.size();
+	for ( int index = 0; index < size; index++ )
+	{
+		if( indexCounter[ index ] == i )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+
+
 
 // Terminating precompiler directives  ////////////////////////////////////////
 #endif

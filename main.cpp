@@ -24,8 +24,6 @@
 #include <unistd.h>
 #include "sim.cpp"
 
-
-
 using namespace std;
 
 int main()

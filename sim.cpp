@@ -64,7 +64,8 @@ void convertToLC( string &input );
 void convertToUC( string &input );
 string getQueryType( string &input );
 string getWhereCondition( string &input );
-
+string getSetCondition( string &input );
+void removeNewLine( string &input );
 
 /**
  * @brief read_Directory method
@@ -189,8 +190,8 @@ void startSimulation( string currentWorkingDirectory )
 		if( !simulationEnd && stringValid( input )  && !removeSemiColon( input ) )
 		{
 			getline( cin, temp, ';' );
-			//cout << input << endl;
 			input = input + temp;
+			removeNewLine( input );
 		}
 		
 		//helper function to remove semi colon
@@ -593,11 +594,63 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 	}
 	else if( actionType.compare( UPDATE ) == 0 )
 	{
+		//get index of curr DB
+		Database dbTemp;
+		dbTemp.databaseName = currentDatabase;
+		databaseExists( dbms, dbTemp, dbReturn );
 
+		//get table name
+		Table tblTemp;
+		tblTemp.tableName = getNextWord( input );
+		
+		//get where condition
+		string wCond = getWhereCondition( input );
+
+		//get set condition
+		string sCond = getSetCondition( input );
+	
+		//check if table exists
+		if( !(dbms[ dbReturn ].tableExists( tblTemp.tableName, tblReturn )) )
+		{
+			//if it doesnt exist then return error
+			errorExists = true;
+			errorType = ERROR_TBL_NOT_EXISTS;
+			errorContainerName = tblTemp.tableName;
+		}
+		else
+		{
+			//update values
+			tblTemp.tableUpdate( currentWorkingDirectory, currentDatabase, wCond, sCond );
+		}
 	}
 	else if( actionType.compare( DELETE ) == 0 )
 	{
+		//get index of curr DB
+		Database dbTemp;
+		dbTemp.databaseName = currentDatabase;
+		databaseExists( dbms, dbTemp, dbReturn );
 
+		string temp = getQueryType( input );
+		//get table name
+		Table tblTemp;
+		tblTemp.tableName = getNextWord( input );
+
+		//get where condition
+		string wCond = getWhereCondition( input );
+	
+		//check if table exists
+		if( !(dbms[ dbReturn ].tableExists( tblTemp.tableName, tblReturn )) )
+		{
+			//if it doesnt exist then return error
+			errorExists = true;
+			errorType = ERROR_TBL_NOT_EXISTS;
+			errorContainerName = tblTemp.tableName;
+		}
+		else
+		{
+			//update values
+			tblTemp.tableDelete( currentWorkingDirectory, currentDatabase, wCond );
+		}
 	}
 	else if( actionType.compare( EXIT ) == 0 )
 	{
@@ -617,8 +670,6 @@ bool startEvent( string input, vector< Database> &dbms, string currentWorkingDir
 
 	return exitProgram;
 }
-
-
 
 /**
  * @brief databaseExists
@@ -833,12 +884,56 @@ string getWhereCondition( string &input )
 		//take first word of input and set as action word
 		condType = input.substr( whereOccurance + 6, input.size() - 1 );
 		//erase word from original str to further parse
-		input.erase( 0, whereOccurance + 6 );
+		input.erase( whereOccurance, input.size() - 1 );
 		return condType;
 	}
 	else
 	{
 		return "";
 	}
+}
 
+string getSetCondition( string &input )
+{
+	bool setOccurs = false;
+	int setOccurance = 0;
+	int inputSize = input.size();
+
+	for( int index = 0; index < inputSize; index++ )
+	{
+		//check that i is f or F
+		if( ( input[ index ] == 's' || input[ index ] == 'S' ) &&
+			( input[ index + 1 ] == 'e' || input[ index + 1 ] == 'E' ) && 
+			( input[ index + 2 ] == 't' || input[ index + 2 ] == 'T' ) )
+		{
+			setOccurs = true;
+			setOccurance = index;
+		}
+	}
+
+	if( setOccurs )
+	{
+		string setType;
+		//take first word of input and set as action word
+		setType = input.substr( setOccurance + 4, input.find("\n") - 1);
+		//erase word from original str to further parse
+		input.erase( setOccurance, input.size() - 1);
+		return setType;
+	}
+	else
+	{
+		return "";
+	}
+}
+
+void removeNewLine( string &input )
+{	
+	int inputSize = input.size();
+	for( int index = 0; index < inputSize; index++ )
+	{
+		if( input[ index ] == '\n' )
+		{
+			input[ index ] = ' ';
+		}
+	}
 }
