@@ -27,7 +27,7 @@ using namespace std;
 #define TABLE_CPP
 
 const string ALL = "*";
-
+//struct containing attribute name and index values 
 struct AttributeSubset{
 	string attributeName;
 	int attributeIndex;
@@ -118,6 +118,23 @@ string getNextWord( string &input )
 	}
 }
 
+/**
+ * @brief getUntilTabg
+ *
+ * @details Used to find the action word (command) if tab is present prior
+ *          
+ * @pre assumes there is more to the string and erases
+ *
+ * @post action word is found and returned
+ *
+ * @par Algorithm parses through the string and erases till next space
+ *
+ * @param [in] string &input
+ *      
+ * @return string (the word)
+ *
+ * @note None
+ */
 string getUntilTab( string &input )
 {
 	string attribute;
@@ -536,6 +553,10 @@ void Table::tableAlter( string currentWorkingDirectory, string currentDatabase, 
  *
  * @param [in] string currentDatabase
  *   
+ * @param [in] string whereType
+ *
+ * @param [in] string queryType
+ *
  * @return None
  *
  * @note None
@@ -990,6 +1011,25 @@ void Table::tableSelect( string currentWorkingDirectory, string currentDatabase,
 	}
 }
 
+/**
+ *@brief tableInsert
+ *
+ *@details inserts a new record into an existing table
+ *
+ *@par Algorithm goes to correct file path where table info is, parses record, 
+ *            and adds new record to the file and outputs succession to terminal
+ *
+ *@param [in] string currentWorkingDirectory
+ * 
+ *@param [in] string currentDatabase
+ *
+ *@param [in] string tblName
+ *
+ *@param [in] string input
+ *
+ *@param [in] bool &errorCode
+ *
+*/
 void Table::tableInsert( string currentWorkingDirectory, string currentDatabase, string tblName, string input, bool &errorCode )
 {
 	string contentStr = "\n";
@@ -1024,6 +1064,20 @@ void Table::tableInsert( string currentWorkingDirectory, string currentDatabase,
 	cout << "-- 1 new record inserted." << endl;
 }
 
+/**
+ *@brief tableUpdate
+ *
+ *@details updates the table based on all records that match the given condition  
+ *
+ *@param [in] string currentWorkingDirectory
+ *
+ *@param [in] string currentDatabase
+ *
+ *@param [in] string whereType
+ *
+ *@param [in] string setType
+ *
+*/
 void Table::tableUpdate( string currentWorkingDirectory, string currentDatabase, string whereType, string setType )
 {
 	vector< Attribute > attributes;
@@ -1478,6 +1532,22 @@ bool isAttrFloat( vector< Attribute > attributes, string attrName )
 	return false;	
 }
 
+/**
+*@brief getWhereCondition method
+*
+*@details if there is a where condition in statement, parses that data
+*
+*@par Algorithm gets Where condition, and checks operatorValue from prev. function
+*			and stores the comparison which is converted into a floata and stored
+*
+*@param [in] WhereCondition &wCond
+*
+*@param [in] string whereType
+*
+*@param [in] vector <Attribute> attributes
+*
+*@note uses functions from setCondition 
+*/
 void getWhereCondition( WhereCondition &wCond, string whereType, vector< Attribute > attributes )
 {
 	wCond.attributeName = getNextWord( whereType );
@@ -1492,6 +1562,22 @@ void getWhereCondition( WhereCondition &wCond, string whereType, vector< Attribu
 	}
 }
 
+/**
+*@brief getSetCondition method
+*
+*@details parses through to store set command information
+*
+*@par Algorithm uses previous functions related to parsing such as getNextWord and removeLeadingWS to parse through phrase and store info 
+*
+*@param [in] SetCondition &sCond
+*
+*@param [in] string setType
+*
+*@param [in] vector <Attribute> attributes
+*
+*@return none (void)
+*
+*/
 void getSetCondition( SetCondition &sCond, string setType, vector< Attribute > attributes )
 {
 	removeLeadingWS( setType );
@@ -1501,6 +1587,17 @@ void getSetCondition( SetCondition &sCond, string setType, vector< Attribute > a
 	sCond.newValue = setType;
 }
 
+/**
+*@brief bool currIndexIsSubset Method
+*
+*@details checks if the the current Index mathces the index passed in 
+*
+*@param [in] vector < AttributeSubset > attrSubsets
+*
+*@param [in] int indexVal
+*
+*@return bool true if the same value
+*/
 bool currIndexIsSubset( vector< AttributeSubset > attrSubsets, int indexVal )
 {
 	int subsetSize = attrSubsets.size();
@@ -1514,6 +1611,17 @@ bool currIndexIsSubset( vector< AttributeSubset > attrSubsets, int indexVal )
 	return false;
 }
 
+/**
+*@brief indexExists method
+*
+*@details checks if the index value passed in exists 
+*
+*@param [in] int i (index value)
+*
+*@param [in] vector < int > indexCounter
+*
+*@return bool true if index passed in exists in the vector of indices
+*/
 bool indexExists( int i, vector< int > indexCounter )
 {
 	int size = indexCounter.size();

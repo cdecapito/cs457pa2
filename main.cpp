@@ -7,10 +7,10 @@
  * @details Starts the simulation for the basic database mgmt program
  *
  * 
- *          1.00 
+ *          2.00 
  *          Carli Decapito
  *		  Sanya Gupta
- *		  Eugene Nelson (22 Feb 2018)
+ *		  Eugene Nelson (March 27 2018)
  *          Original code
  *
  * @Note Requires sim.cpp

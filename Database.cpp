@@ -30,15 +30,32 @@ using namespace std;
 #ifndef DATABASE_CPP
 #define DATABASE_CPP
 
-
+//declaration of the function
 bool caseInsCompare( string s1, string s2 );
 
-
+/**
+ *@brief caseInsCharCompareN method
+ *
+ *@details converts char to uppercase, used to make program case insensitive
+ *
+ *@param [in] char a
+ *
+ *@param [in] char b 
+*/
 inline bool caseInsCharCompareN( char a, char b )
 {
 	return( toupper( a ) == toupper( b ) );
 }
 
+/**
+ *@brief caseInsCompare
+ *
+ *@details checks size of strings and if the values of each char a are equal
+ *
+ *@param [in] string s1
+ *
+ *@param [in] string s2
+*/
 bool caseInsCompare( string s1, string s2 )
 {
 	return ( ( s1.size() == s2.size() ) && 

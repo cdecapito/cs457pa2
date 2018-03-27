@@ -206,6 +206,16 @@ void startSimulation( string currentWorkingDirectory )
 	cout << "-- All done. " << endl; 
 }
 
+/**
+*@brief bool stringValid method
+*
+*@details checks sthat the string does not start with a dash or space
+*
+*@param [in] string str
+*
+*@return bool true if the string is valid
+*
+*/
 bool stringValid( string str )
 {
 	//check that it is not a comment or empty space
@@ -215,6 +225,7 @@ bool stringValid( string str )
 	}
 	return true;
 }
+
 
 bool exitCheck( string str )
 {
@@ -813,6 +824,15 @@ void convertToLC( string &input )
 	}
 }
 
+/**
+*@brief void convertToUC method
+*
+*@details converts given string to uppercase toUpper method
+*
+*@param [in] string &input
+*
+*@return none (void)
+*/
 void convertToUC( string &input )
 {
 	int size = input.size();
@@ -822,6 +842,15 @@ void convertToUC( string &input )
 	}
 }
 
+/**
+*@brief string getQueryType method
+*
+*@details basically chesks for "from" statment and stores the table
+*
+*@param [in] string &input
+*
+*@return string (aka the record name) or space
+*/
 string getQueryType( string &input )
 {
 	bool fromOccurs = false;
@@ -858,6 +887,15 @@ string getQueryType( string &input )
 	
 }
 
+/**
+*@brief string getWhereCondition method
+*
+*@details checks for where in string, and if true stores the condition
+*
+*@param [in] string &input
+*
+*@return string
+*/
 string getWhereCondition( string &input )
 {
 	bool whereOccurs = false;
@@ -893,6 +931,15 @@ string getWhereCondition( string &input )
 	}
 }
 
+/**
+*@brief string getSetCondition method
+*
+*@details returns the attribute that is being reset
+*
+*@param [in] string &input
+*
+*@return string (the set value)
+*/
 string getSetCondition( string &input )
 {
 	bool setOccurs = false;
@@ -926,6 +973,15 @@ string getSetCondition( string &input )
 	}
 }
 
+/**
+*@brief void removeNewLine method
+*
+*@details takes care of newlines by replacing them with a space
+*
+*@param [in] string &input
+*
+*@return none (void)
+*/
 void removeNewLine( string &input )
 {	
 	int inputSize = input.size();
